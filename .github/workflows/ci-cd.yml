@@ -1,5 +1,6 @@
 name: CI/CD
 
+# Workflow for CI/CD pipeline
 on:
   push:
     branches: [ main ]
