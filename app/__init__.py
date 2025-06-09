@@ -25,6 +25,7 @@ def create_app(test_config=None):
             SQLALCHEMY_DATABASE_URI=f'sqlite:///{db_path}',
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
             # Add security-related configurations
+            SECRET_KEY=os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key'),  # Get from environment or use default
             SESSION_COOKIE_SECURE=True,
             SESSION_COOKIE_HTTPONLY=True,
             SESSION_COOKIE_SAMESITE='Lax',
