@@ -5,7 +5,7 @@ import logging
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app import create_app
+from app import create_app, db
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +21,16 @@ try:
         'SQLALCHEMY_TRACK_MODIFICATIONS': False
     })
     logger.info("Application created successfully")
+
+    # Ensure database and tables exist
+    with app.app_context():
+        try:
+            db.create_all()
+            logger.info("Database tables created successfully")
+        except Exception as e:
+            logger.error(f"Error creating database tables: {str(e)}", exc_info=True)
+            raise
+
 except Exception as e:
     logger.error(f"Error creating application: {str(e)}", exc_info=True)
     raise

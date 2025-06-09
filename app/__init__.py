@@ -15,7 +15,10 @@ def create_app(test_config=None):
     
     if test_config is None:
         # Set the database path for Azure environment
-        db_path = os.path.join(os.environ.get('HOME', '/home/site/wwwroot'), 'todos.db')
+        # Use a writable location in Azure App Service
+        db_path = os.path.join(os.environ.get('HOME', '/home/site/wwwroot'), 'data', 'todos.db')
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        
         app.config.update(
             SQLALCHEMY_DATABASE_URI=f'sqlite:///{db_path}',
             SQLALCHEMY_TRACK_MODIFICATIONS=False
@@ -31,7 +34,7 @@ def create_app(test_config=None):
             db.create_all()
             logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
+        logger.error(f"Error initializing database: {str(e)}", exc_info=True)
         raise
 
     # Register blueprints
