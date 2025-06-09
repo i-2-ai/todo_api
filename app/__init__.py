@@ -50,7 +50,7 @@ def create_app(test_config=None):
     # Register blueprints
     try:
         from .routes import bp
-        app.register_blueprint(bp, url_prefix='/api')
+        app.register_blueprint(bp)
         logger.info("Routes registered successfully")
     except Exception as e:
         logger.error(f"Error registering routes: {str(e)}", exc_info=True)

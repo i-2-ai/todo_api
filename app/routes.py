@@ -14,6 +14,7 @@ api = Api(bp,
     doc='/swagger'
 )
 
+# Define the namespace for todos
 ns = api.namespace('todos', description='Todo operations')
 
 # Define models for swagger documentation
