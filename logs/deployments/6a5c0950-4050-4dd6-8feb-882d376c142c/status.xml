@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>6a5c0950-4050-4dd6-8feb-882d376c142c</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"a0c3d0b9787f87f55726b548b175849b7f9bc717","repoName":"i-2-ai/todo_api","actor":"amitrangra","slotName":"production","commitMessage":"Fix: Add project root to PYTHONPATH in tests"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-05-28T22:05:15.0192107Z</lastSuccessEndTime>
+  <receivedTime>2025-05-28T22:05:10.5242338Z</receivedTime>
+  <startTime>2025-05-28T22:05:11.7851465Z</startTime>
+  <endTime>2025-05-28T22:05:15.0192107Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

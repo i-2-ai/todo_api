@@ -1,0 +1,69 @@
+2025-05-28T22:13:12.885442621Z    _____                               
+2025-05-28T22:13:12.885483028Z   /  _  \ __________ _________   ____  
+2025-05-28T22:13:12.885490091Z  /  /_\  \\___   /  |  \_  __ \_/ __ \ 
+2025-05-28T22:13:12.885495812Z /    |    \/    /|  |  /|  | \/\  ___/ 
+2025-05-28T22:13:12.885501402Z \____|__  /_____ \____/ |__|    \___  >
+2025-05-28T22:13:12.885507193Z         \/      \/                  \/ 
+2025-05-28T22:13:12.885512703Z A P P   S E R V I C E   O N   L I N U X
+2025-05-28T22:13:12.885518043Z 
+2025-05-28T22:13:12.885523203Z Documentation: http://aka.ms/webapp-linux
+2025-05-28T22:13:12.885529084Z Python 3.11.11
+2025-05-28T22:13:12.885534204Z Note: Any data outside '/home' is not persisted
+2025-05-28T22:13:13.313350494Z Starting OpenBSD Secure Shell server: sshd.
+2025-05-28T22:13:13.347952402Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2025-05-28T22:13:13.402474325Z Updating certificates in /etc/ssl/certs...
+2025-05-28T22:13:16.689916840Z 2 added, 0 removed; done.
+2025-05-28T22:13:16.690945180Z Running hooks in /etc/ca-certificates/update.d...
+2025-05-28T22:13:16.699200793Z done.
+2025-05-28T22:13:16.713624742Z CA certificates copied and updated successfully.
+2025-05-28T22:13:16.846672199Z Site's appCommandLine: gunicorn --bind=0.0.0.0 --timeout 600 app:app
+2025-05-28T22:13:16.884803413Z Launching oryx with: create-script -appPath /home/site/wwwroot -output /opt/startup/startup.sh -virtualEnvName antenv -defaultApp /opt/defaultsite -userStartupCommand 'gunicorn --bind=0.0.0.0 --timeout 600 app:app'
+2025-05-28T22:13:16.986530057Z Could not find build manifest file at '/home/site/wwwroot/oryx-manifest.toml'
+2025-05-28T22:13:16.986582925Z Could not find operation ID in manifest. Generating an operation id...
+2025-05-28T22:13:16.986589167Z Build Operation ID: c0def55f-213c-4aad-9b47-700a757f57f5
+2025-05-28T22:13:17.065615909Z Oryx Version: 0.2.20250121.2, Commit: d363b83aad8365d7e91cc246d6dfb3ddad209ddb, ReleaseTagName: 20250121.2
+2025-05-28T22:13:17.081902880Z Writing output script to '/opt/startup/startup.sh'
+2025-05-28T22:13:17.110427408Z WARNING: Could not find virtual environment directory /home/site/wwwroot/antenv.
+2025-05-28T22:13:17.110501386Z WARNING: Could not find package directory /home/site/wwwroot/__oryx_packages__.
+2025-05-28T22:13:18.480685105Z [2025-05-28 22:13:18 +0000] [1005] [INFO] Starting gunicorn 23.0.0
+2025-05-28T22:13:18.481522268Z [2025-05-28 22:13:18 +0000] [1005] [INFO] Listening at: http://0.0.0.0:8000 (1005)
+2025-05-28T22:13:18.481816428Z [2025-05-28 22:13:18 +0000] [1005] [INFO] Using worker: sync
+2025-05-28T22:13:18.492835441Z [2025-05-28 22:13:18 +0000] [1006] [INFO] Booting worker with pid: 1006
+2025-05-28T22:13:18.727671627Z [2025-05-28 22:13:18 +0000] [1006] [ERROR] Exception in worker process
+2025-05-28T22:13:18.727702615Z Traceback (most recent call last):
+2025-05-28T22:13:18.728483413Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/arbiter.py", line 608, in spawn_worker
+2025-05-28T22:13:18.728493161Z     worker.init_process()
+2025-05-28T22:13:18.728498872Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/workers/base.py", line 135, in init_process
+2025-05-28T22:13:18.728504823Z     self.load_wsgi()
+2025-05-28T22:13:18.728510253Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/workers/base.py", line 147, in load_wsgi
+2025-05-28T22:13:18.728515774Z     self.wsgi = self.app.wsgi()
+2025-05-28T22:13:18.728521204Z                 ^^^^^^^^^^^^^^^
+2025-05-28T22:13:18.728526584Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/app/base.py", line 66, in wsgi
+2025-05-28T22:13:18.728532225Z     self.callable = self.load()
+2025-05-28T22:13:18.728537494Z                     ^^^^^^^^^^^
+2025-05-28T22:13:18.728542704Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 57, in load
+2025-05-28T22:13:18.728547924Z     return self.load_wsgiapp()
+2025-05-28T22:13:18.728553164Z            ^^^^^^^^^^^^^^^^^^^
+2025-05-28T22:13:18.728558514Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 47, in load_wsgiapp
+2025-05-28T22:13:18.728564334Z     return util.import_app(self.app_uri)
+2025-05-28T22:13:18.728569524Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-05-28T22:13:18.728574824Z   File "/opt/python/3.11.11/lib/python3.11/site-packages/gunicorn/util.py", line 370, in import_app
+2025-05-28T22:13:18.728580495Z     mod = importlib.import_module(module)
+2025-05-28T22:13:18.728585765Z           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-05-28T22:13:18.728591034Z   File "/opt/python/3.11.11/lib/python3.11/importlib/__init__.py", line 126, in import_module
+2025-05-28T22:13:18.728596474Z     return _bootstrap._gcd_import(name[level:], package, level)
+2025-05-28T22:13:18.728602065Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-05-28T22:13:18.728607094Z   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+2025-05-28T22:13:18.728613156Z   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+2025-05-28T22:13:18.728618726Z   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+2025-05-28T22:13:18.728624166Z   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+2025-05-28T22:13:18.728629546Z   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+2025-05-28T22:13:18.728635397Z   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+2025-05-28T22:13:18.728640547Z   File "/home/site/wwwroot/app/__init__.py", line 2, in <module>
+2025-05-28T22:13:18.728646358Z     from flask_sqlalchemy import SQLAlchemy
+2025-05-28T22:13:18.728659863Z ModuleNotFoundError: No module named 'flask_sqlalchemy'
+2025-05-28T22:13:18.728665413Z [2025-05-28 22:13:18 +0000] [1006] [INFO] Worker exiting (pid: 1006)
+2025-05-28T22:13:18.776038084Z [2025-05-28 22:13:18 +0000] [1005] [ERROR] Worker (pid:1006) exited with code 3
+2025-05-28T22:13:18.776366408Z [2025-05-28 22:13:18 +0000] [1005] [ERROR] Shutting down: Master
+2025-05-28T22:13:18.776433362Z [2025-05-28 22:13:18 +0000] [1005] [ERROR] Reason: Worker failed to boot.
+
