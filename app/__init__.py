@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_talisman import Talisman
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,14 @@ def create_app(test_config=None):
         
         app.config.update(
             SQLALCHEMY_DATABASE_URI=f'sqlite:///{db_path}',
-            SQLALCHEMY_TRACK_MODIFICATIONS=False
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+            # Add security-related configurations
+            SESSION_COOKIE_SECURE=True,
+            SESSION_COOKIE_HTTPONLY=True,
+            SESSION_COOKIE_SAMESITE='Lax',
+            PERMANENT_SESSION_LIFETIME=1800,  # 30 minutes
+            WTF_CSRF_ENABLED=True,
+            WTF_CSRF_TIME_LIMIT=3600  # 1 hour
         )
         logger.info(f"Using database path: {db_path}")
     else:
@@ -49,11 +57,26 @@ def create_app(test_config=None):
 
     # Register blueprints
     try:
-        from .routes import bp
+        from .routes import bp, csrf
+        csrf.init_app(app)  # Initialize CSRF protection
         app.register_blueprint(bp)
         logger.info("Routes registered successfully")
     except Exception as e:
         logger.error(f"Error registering routes: {str(e)}", exc_info=True)
         raise
+
+    # Initialize Talisman for security headers
+    Talisman(app,
+        force_https=True,
+        strict_transport_security=True,
+        session_cookie_secure=True,
+        content_security_policy={
+            'default-src': "'self'",
+            'img-src': "'self' data:",
+            'script-src': "'self'",
+            'style-src': "'self' 'unsafe-inline'",
+            'frame-ancestors': "'none'"
+        }
+    )
 
     return app 

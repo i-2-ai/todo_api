@@ -1,16 +1,18 @@
 import logging
 from flask import Blueprint, jsonify, request
 from flask_restx import Api, Resource, fields
+from flask_wtf.csrf import CSRFProtect
 from .models import Todo, db
 from datetime import datetime
 from werkzeug.exceptions import NotFound, BadRequest
 
 logger = logging.getLogger(__name__)
 bp = Blueprint('todos', __name__)
+csrf = CSRFProtect()
 api = Api(bp,
     title='Todo API',
     version='1.0',
-    description='A simple Todo API',
+    description='A secure Todo API',
     doc='/swagger'
 )
 
