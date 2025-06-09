@@ -24,7 +24,7 @@ def init_database(app):
         db.drop_all()
 
 def test_create_todo(client, init_database):
-    response = client.post('/todos',
+    response = client.post('/api/todos',
         json={
             'title': 'Test Todo',
             'description': 'Test Description',
@@ -42,7 +42,7 @@ def test_get_todos(client, init_database):
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.get('/todos')
+    response = client.get('/api/todos')
     assert response.status_code == 200
     data = json.loads(response.data)
     assert len(data) == 1
@@ -54,7 +54,7 @@ def test_get_todo(client, init_database):
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.get(f'/todos/{todo.id}')
+    response = client.get(f'/api/todos/{todo.id}')
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data['title'] == 'Test Todo'
@@ -65,7 +65,7 @@ def test_update_todo(client, init_database):
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.put(f'/todos/{todo.id}',
+    response = client.put(f'/api/todos/{todo.id}',
         json={
             'title': 'Updated Todo',
             'description': 'Updated Description'
@@ -82,9 +82,9 @@ def test_delete_todo(client, init_database):
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.delete(f'/todos/{todo.id}')
+    response = client.delete(f'/api/todos/{todo.id}')
     assert response.status_code == 204
 
     # Verify todo is deleted
-    response = client.get(f'/todos/{todo.id}')
+    response = client.get(f'/api/todos/{todo.id}')
     assert response.status_code == 404 
