@@ -1,7 +1,8 @@
 import logging
 from flask import Blueprint, jsonify, request
 from flask_restx import Api, Resource, fields
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_cors import CORS
 from .models import Todo, db
 from datetime import datetime
 from werkzeug.exceptions import NotFound, BadRequest
@@ -9,12 +10,24 @@ from werkzeug.exceptions import NotFound, BadRequest
 logger = logging.getLogger(__name__)
 bp = Blueprint('todos', __name__)
 csrf = CSRFProtect()
+
+# Initialize Flask-RESTX with Swagger UI
 api = Api(bp,
     title='Todo API',
     version='1.0',
     description='A secure Todo API',
-    doc='/swagger'
+    doc='/swagger',
+    authorizations={
+        'apikey': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'X-API-KEY'
+        }
+    }
 )
+
+# Enable CORS for the API
+CORS(bp, resources={r"/todos/*": {"origins": "*"}})
 
 # Define the namespace for todos
 ns = api.namespace('todos', description='Todo operations')
@@ -60,7 +73,9 @@ class TodoList(Resource):
         try:
             logger.info('Fetching all todos')
             todos = Todo.query.all()
-            return todos
+            response = jsonify([todo.to_dict() for todo in todos])
+            response.headers['X-CSRF-Token'] = generate_csrf()
+            return response.get_json(), 200, {'X-CSRF-Token': generate_csrf()}
         except Exception as e:
             logger.error(f"Error fetching todos: {str(e)}", exc_info=True)
             raise
@@ -87,7 +102,7 @@ class TodoList(Resource):
             db.session.add(todo)
             db.session.commit()
             logger.info(f"Created todo with id {todo.id}")
-            return todo, 201
+            return todo, 201, {'X-CSRF-Token': generate_csrf()}
         except ValueError as e:
             logger.warning(f"Invalid data format: {str(e)}")
             raise BadRequest(f"Invalid data format: {str(e)}")
@@ -105,7 +120,7 @@ class TodoItem(Resource):
         try:
             logger.info(f'Fetching todo with id {id}')
             todo = Todo.query.get_or_404(id)
-            return todo
+            return todo, 200, {'X-CSRF-Token': generate_csrf()}
         except Exception as e:
             logger.error(f"Error fetching todo {id}: {str(e)}", exc_info=True)
             raise
@@ -131,7 +146,7 @@ class TodoItem(Resource):
                 
             db.session.commit()
             logger.info(f"Updated todo {id}")
-            return todo
+            return todo, 200, {'X-CSRF-Token': generate_csrf()}
         except ValueError as e:
             logger.warning(f"Invalid data format: {str(e)}")
             raise BadRequest(f"Invalid data format: {str(e)}")
@@ -149,7 +164,7 @@ class TodoItem(Resource):
             db.session.delete(todo)
             db.session.commit()
             logger.info(f"Deleted todo {id}")
-            return '', 204
+            return '', 204, {'X-CSRF-Token': generate_csrf()}
         except Exception as e:
             logger.error(f"Error deleting todo {id}: {str(e)}", exc_info=True)
             raise 

@@ -9,6 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
+talisman = Talisman()
 
 def create_app(test_config=None):
     # Create Flask app
@@ -32,8 +33,30 @@ def create_app(test_config=None):
             WTF_CSRF_TIME_LIMIT=3600  # 1 hour
         )
         logger.info(f"Using database path: {db_path}")
+        
+        # Initialize Talisman for security headers in production
+        talisman.init_app(app,
+            force_https=True,
+            strict_transport_security=True,
+            session_cookie_secure=True,
+            content_security_policy={
+                'default-src': "'self'",
+                'img-src': "'self' data:",
+                'script-src': "'self'",
+                'style-src': "'self' 'unsafe-inline'",
+                'frame-ancestors': "'none'"
+            }
+        )
     else:
         app.config.update(test_config)
+        # Set a secret key for session management in tests
+        app.config['SECRET_KEY'] = test_config.get('SECRET_KEY', 'test-secret-key')
+        # Initialize Talisman with reduced security for testing
+        talisman.init_app(app,
+            force_https=False,
+            session_cookie_secure=False,
+            content_security_policy=None
+        )
 
     try:
         # Initialize the database
@@ -64,19 +87,5 @@ def create_app(test_config=None):
     except Exception as e:
         logger.error(f"Error registering routes: {str(e)}", exc_info=True)
         raise
-
-    # Initialize Talisman for security headers
-    Talisman(app,
-        force_https=True,
-        strict_transport_security=True,
-        session_cookie_secure=True,
-        content_security_policy={
-            'default-src': "'self'",
-            'img-src': "'self' data:",
-            'script-src': "'self'",
-            'style-src': "'self' 'unsafe-inline'",
-            'frame-ancestors': "'none'"
-        }
-    )
 
     return app 

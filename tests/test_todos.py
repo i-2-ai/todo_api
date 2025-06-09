@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 def app():
     app = create_app({
         'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:'
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+        'WTF_CSRF_ENABLED': True,
+        'SECRET_KEY': 'test-secret-key'
     })
     return app
 
@@ -23,14 +25,25 @@ def init_database(app):
         yield db
         db.drop_all()
 
-def test_create_todo(client, init_database):
+@pytest.fixture
+def csrf_token(client):
+    """Get a CSRF token for testing"""
+    response = client.get('/todos/')
+    csrf_token = response.headers.get('X-CSRF-Token')
+    if not csrf_token:
+        raise ValueError("CSRF token not found in response headers")
+    return csrf_token
+
+def test_create_todo(client, init_database, csrf_token):
     test_data = {
         'title': 'Test Todo',
         'description': 'Test Description',
         'completed': False,
         'due_date': (datetime.utcnow() + timedelta(days=1)).isoformat()
     }
-    response = client.post('/todos/', json=test_data)
+    response = client.post('/todos/', 
+                         json=test_data,
+                         headers={'X-CSRF-Token': csrf_token})
     assert response.status_code == 201
     data = json.loads(response.data)
     assert data['title'] == test_data['title']
@@ -52,6 +65,7 @@ def test_get_todos(client, init_database):
     data = json.loads(response.data)
     assert len(data) == 1
     assert data[0]['title'] == todo.title
+    assert data[0]['description'] == todo.description
     assert data[0]['completed'] == todo.completed
 
 def test_get_todo(client, init_database):
@@ -68,9 +82,10 @@ def test_get_todo(client, init_database):
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data['title'] == todo.title
+    assert data['description'] == todo.description
     assert data['completed'] == todo.completed
 
-def test_update_todo(client, init_database):
+def test_update_todo(client, init_database, csrf_token):
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -85,14 +100,16 @@ def test_update_todo(client, init_database):
         'description': 'Updated Description',
         'completed': True
     }
-    response = client.put(f'/todos/{todo.id}', json=update_data)
+    response = client.put(f'/todos/{todo.id}', 
+                         json=update_data,
+                         headers={'X-CSRF-Token': csrf_token})
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data['title'] == update_data['title']
     assert data['description'] == update_data['description']
     assert data['completed'] == update_data['completed']
 
-def test_delete_todo(client, init_database):
+def test_delete_todo(client, init_database, csrf_token):
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -102,9 +119,10 @@ def test_delete_todo(client, init_database):
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.delete(f'/todos/{todo.id}')
+    response = client.delete(f'/todos/{todo.id}',
+                           headers={'X-CSRF-Token': csrf_token})
     assert response.status_code == 204
 
-    # Verify todo is deleted
+    # Verify the todo was deleted
     response = client.get(f'/todos/{todo.id}')
     assert response.status_code == 404 
