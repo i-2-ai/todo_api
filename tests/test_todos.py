@@ -24,21 +24,26 @@ def init_database(app):
         db.drop_all()
 
 def test_create_todo(client, init_database):
-    response = client.post('/api/todos',
-        json={
-            'title': 'Test Todo',
-            'description': 'Test Description',
-            'due_date': (datetime.utcnow() + timedelta(days=1)).isoformat()
-        }
-    )
+    test_data = {
+        'title': 'Test Todo',
+        'description': 'Test Description',
+        'completed': False,
+        'due_date': (datetime.utcnow() + timedelta(days=1)).isoformat()
+    }
+    response = client.post('/api/todos', json=test_data)
     assert response.status_code == 201
     data = json.loads(response.data)
-    assert data['title'] == 'Test Todo'
-    assert data['description'] == 'Test Description'
+    assert data['title'] == test_data['title']
+    assert data['description'] == test_data['description']
+    assert data['completed'] == test_data['completed']
 
 def test_get_todos(client, init_database):
     # Create a test todo
-    todo = Todo(title='Test Todo', description='Test Description')
+    todo = Todo.from_dict({
+        'title': 'Test Todo',
+        'description': 'Test Description',
+        'completed': False
+    })
     init_database.session.add(todo)
     init_database.session.commit()
 
@@ -46,39 +51,54 @@ def test_get_todos(client, init_database):
     assert response.status_code == 200
     data = json.loads(response.data)
     assert len(data) == 1
-    assert data[0]['title'] == 'Test Todo'
+    assert data[0]['title'] == todo.title
+    assert data[0]['completed'] == todo.completed
 
 def test_get_todo(client, init_database):
     # Create a test todo
-    todo = Todo(title='Test Todo', description='Test Description')
+    todo = Todo.from_dict({
+        'title': 'Test Todo',
+        'description': 'Test Description',
+        'completed': False
+    })
     init_database.session.add(todo)
     init_database.session.commit()
 
     response = client.get(f'/api/todos/{todo.id}')
     assert response.status_code == 200
     data = json.loads(response.data)
-    assert data['title'] == 'Test Todo'
+    assert data['title'] == todo.title
+    assert data['completed'] == todo.completed
 
 def test_update_todo(client, init_database):
     # Create a test todo
-    todo = Todo(title='Test Todo', description='Test Description')
+    todo = Todo.from_dict({
+        'title': 'Test Todo',
+        'description': 'Test Description',
+        'completed': False
+    })
     init_database.session.add(todo)
     init_database.session.commit()
 
-    response = client.put(f'/api/todos/{todo.id}',
-        json={
-            'title': 'Updated Todo',
-            'description': 'Updated Description'
-        }
-    )
+    update_data = {
+        'title': 'Updated Todo',
+        'description': 'Updated Description',
+        'completed': True
+    }
+    response = client.put(f'/api/todos/{todo.id}', json=update_data)
     assert response.status_code == 200
     data = json.loads(response.data)
-    assert data['title'] == 'Updated Todo'
-    assert data['description'] == 'Updated Description'
+    assert data['title'] == update_data['title']
+    assert data['description'] == update_data['description']
+    assert data['completed'] == update_data['completed']
 
 def test_delete_todo(client, init_database):
     # Create a test todo
-    todo = Todo(title='Test Todo', description='Test Description')
+    todo = Todo.from_dict({
+        'title': 'Test Todo',
+        'description': 'Test Description',
+        'completed': False
+    })
     init_database.session.add(todo)
     init_database.session.commit()
 
