@@ -30,9 +30,19 @@ def create_app(test_config=None):
     try:
         # Initialize the database
         db.init_app(app)
+        
+        # Import models here to ensure they are registered with SQLAlchemy
+        from . import models
+        
         with app.app_context():
-            db.create_all()
-            logger.info("Database initialized successfully")
+            # Verify the table doesn't exist before creating
+            inspector = db.inspect(db.engine)
+            if not inspector.has_table("todo"):
+                logger.info("Creating database tables...")
+                db.create_all()
+                logger.info("Database tables created successfully")
+            else:
+                logger.info("Database tables already exist")
     except Exception as e:
         logger.error(f"Error initializing database: {str(e)}", exc_info=True)
         raise
@@ -43,7 +53,7 @@ def create_app(test_config=None):
         app.register_blueprint(bp, url_prefix='/api')
         logger.info("Routes registered successfully")
     except Exception as e:
-        logger.error(f"Error registering routes: {str(e)}")
+        logger.error(f"Error registering routes: {str(e)}", exc_info=True)
         raise
 
     return app 
