@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, abort
+from werkzeug.exceptions import NotFound
 from .models import Todo
 from . import db
 from datetime import datetime
@@ -12,13 +13,7 @@ def get_todos():
     try:
         logger.info('Fetching all todos')
         todos = Todo.query.all()
-        return jsonify([{
-            'id': todo.id,
-            'title': todo.title,
-            'description': todo.description,
-            'completed': todo.completed,
-            'due_date': todo.due_date.isoformat() if todo.due_date else None
-        } for todo in todos])
+        return jsonify([todo.to_dict() for todo in todos])
     except Exception as e:
         logger.error(f'Error fetching todos: {str(e)}', exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
@@ -32,23 +27,11 @@ def create_todo():
         if not data or 'title' not in data:
             return jsonify({'error': 'Title is required'}), 400
             
-        todo = Todo(
-            title=data['title'],
-            description=data.get('description', ''),
-            completed=data.get('completed', False),
-            due_date=datetime.fromisoformat(data['due_date']) if 'due_date' in data else None
-        )
-        
+        todo = Todo.from_dict(data)
         db.session.add(todo)
         db.session.commit()
         
-        return jsonify({
-            'id': todo.id,
-            'title': todo.title,
-            'description': todo.description,
-            'completed': todo.completed,
-            'due_date': todo.due_date.isoformat() if todo.due_date else None
-        }), 201
+        return jsonify(todo.to_dict()), 201
     except Exception as e:
         logger.error(f'Error creating todo: {str(e)}', exc_info=True)
         db.session.rollback()
@@ -59,13 +42,9 @@ def get_todo(id):
     try:
         logger.info(f'Fetching todo with id {id}')
         todo = Todo.query.get_or_404(id)
-        return jsonify({
-            'id': todo.id,
-            'title': todo.title,
-            'description': todo.description,
-            'completed': todo.completed,
-            'due_date': todo.due_date.isoformat() if todo.due_date else None
-        })
+        return jsonify(todo.to_dict())
+    except NotFound:
+        raise
     except Exception as e:
         logger.error(f'Error fetching todo {id}: {str(e)}', exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
@@ -87,14 +66,9 @@ def update_todo(id):
             todo.due_date = datetime.fromisoformat(data['due_date']) if data['due_date'] else None
             
         db.session.commit()
-        
-        return jsonify({
-            'id': todo.id,
-            'title': todo.title,
-            'description': todo.description,
-            'completed': todo.completed,
-            'due_date': todo.due_date.isoformat() if todo.due_date else None
-        })
+        return jsonify(todo.to_dict())
+    except NotFound:
+        raise
     except Exception as e:
         logger.error(f'Error updating todo {id}: {str(e)}', exc_info=True)
         db.session.rollback()
@@ -108,6 +82,8 @@ def delete_todo(id):
         db.session.delete(todo)
         db.session.commit()
         return '', 204
+    except NotFound:
+        raise
     except Exception as e:
         logger.error(f'Error deleting todo {id}: {str(e)}', exc_info=True)
         db.session.rollback()
