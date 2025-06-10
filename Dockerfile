@@ -12,4 +12,5 @@ ENV FLASK_ENV=production
 
 EXPOSE 5000
 
-CMD ["flask", "run", "--host=0.0.0.0"] 
+# Run deployment script and then start Flask app
+CMD python deploy.py && flask run --host=0.0.0.0 
