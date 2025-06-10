@@ -5,9 +5,10 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_cors import CORS
 from flask_talisman import Talisman
 from werkzeug.wrappers import Response as WrapperResponse
+from werkzeug.exceptions import NotFound, BadRequest
+from http import HTTPStatus
 from .models import Todo, db
 from datetime import datetime
-from werkzeug.exceptions import NotFound, BadRequest
 from functools import wraps
 
 logger = logging.getLogger(__name__)
@@ -67,19 +68,19 @@ todo_input = api.model('TodoInput', {
 def not_found(e):
     """Handle 404 errors"""
     logger.warning(f"Resource not found: {request.url}")
-    return {'error': str(e)}, 404
+    return {'error': str(e)}, HTTPStatus.NOT_FOUND
 
 @bp.errorhandler(400)
 def bad_request(e):
     """Handle 400 errors"""
     logger.warning(f"Bad request: {str(e)}")
-    return {'error': str(e)}, 400
+    return {'error': str(e)}, HTTPStatus.BAD_REQUEST
 
 @bp.errorhandler(500)
 def internal_error(e):
     """Handle 500 errors"""
     logger.error(f"Internal server error: {str(e)}", exc_info=True)
-    return {'error': str(e)}, 500
+    return {'error': str(e)}, HTTPStatus.INTERNAL_SERVER_ERROR
 
 def add_csrf_token(response):
     """Add CSRF token to response headers"""
@@ -104,7 +105,7 @@ def add_response_headers(f):
     def decorated_function(*args, **kwargs):
         if request.method == 'OPTIONS':
             response = make_response()
-            response.status_code = 200
+            response.status_code = HTTPStatus.OK
             response = add_cors_headers(response)
             return response
 
@@ -145,7 +146,7 @@ class TodoList(Resource):
         try:
             logger.info('Fetching all todos')
             todos = Todo.query.all()
-            return [todo.to_dict() for todo in todos]
+            return [todo.to_dict() for todo in todos], HTTPStatus.OK
         except Exception as e:
             logger.error(f"Error fetching todos: {str(e)}", exc_info=True)
             raise
@@ -173,7 +174,7 @@ class TodoList(Resource):
             db.session.commit()
             logger.info(f"Created todo with id {todo.id}")
             
-            return todo.to_dict(), 201
+            return todo.to_dict(), HTTPStatus.CREATED
         except ValueError as e:
             logger.warning(f"Invalid data format: {str(e)}")
             raise BadRequest(f"Invalid data format: {str(e)}")
@@ -193,7 +194,7 @@ class TodoItem(Resource):
         try:
             logger.info(f'Fetching todo with id {id}')
             todo = Todo.query.get_or_404(id)
-            return todo.to_dict()
+            return todo.to_dict(), HTTPStatus.OK
         except Exception as e:
             logger.error(f"Error fetching todo {id}: {str(e)}", exc_info=True)
             raise
@@ -220,7 +221,7 @@ class TodoItem(Resource):
             db.session.commit()
             logger.info(f"Updated todo {id}")
             
-            return todo.to_dict()
+            return todo.to_dict(), HTTPStatus.OK
         except ValueError as e:
             logger.warning(f"Invalid data format: {str(e)}")
             raise BadRequest(f"Invalid data format: {str(e)}")
@@ -239,7 +240,7 @@ class TodoItem(Resource):
             db.session.commit()
             logger.info(f"Deleted todo {id}")
             
-            return '', 204
+            return '', HTTPStatus.NO_CONTENT
         except Exception as e:
             logger.error(f"Error deleting todo {id}: {str(e)}", exc_info=True)
             raise
@@ -249,15 +250,15 @@ class TodoItem(Resource):
 def handle_options():
     if request.method == 'OPTIONS':
         response = make_response()
-        response.status_code = 200
+        response.status_code = HTTPStatus.OK
         response = add_cors_headers(response)
-        return response 
+        return response
 
 # Register error handlers for the API
 @ns.errorhandler(Exception)
 def handle_error(e):
     """Handle all API errors"""
-    code = getattr(e, 'code', 500)
+    code = getattr(e, 'code', HTTPStatus.INTERNAL_SERVER_ERROR)
     if hasattr(e, 'data'):
         return {'error': str(e.data['message'])}, code
     return {'error': str(e)}, code 
