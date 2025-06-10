@@ -16,6 +16,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+def verify_table_schema(db_path):
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Get table info
+        cursor.execute('PRAGMA table_info(todo)')
+        columns = cursor.fetchall()
+        logger.info(f'Current table schema: {columns}')
+        
+        # Check if table exists and has correct schema
+        column_names = {col[1] for col in columns}
+        required = {'id', 'title', 'description', 'completed', 'due_date', 'created_at'}
+        
+        if not required.issubset(column_names):
+            missing = required - column_names
+            logger.error(f'Missing columns: {missing}')
+            return False
+            
+        logger.info('Table schema verification successful')
+        return True
+    except Exception as e:
+        logger.error(f'Error verifying schema: {str(e)}')
+        return False
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
 try:
     # Set up database path
     db_path = os.path.join(os.environ.get('HOME', '/home/site/wwwroot'), 'data', 'todos.db')
@@ -30,15 +58,18 @@ try:
     # Set permissions
     os.chmod(db_dir, 0o777)
     
-    # Create table directly with SQL
+    # Create database connection
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # Drop existing table if it exists
+    logger.info('Dropping existing table if it exists')
     cursor.execute('DROP TABLE IF EXISTS todo')
+    conn.commit()
     
     # Create table with explicit schema
-    cursor.execute('''
+    logger.info('Creating table with new schema')
+    create_table_sql = '''
     CREATE TABLE todo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title VARCHAR(100) NOT NULL,
@@ -47,9 +78,22 @@ try:
         due_date DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-    ''')
-    
+    '''
+    cursor.execute(create_table_sql)
     conn.commit()
+    
+    # Verify table was created
+    cursor.execute('SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'todo\'')
+    if not cursor.fetchone():
+        raise Exception('Table was not created successfully')
+    
+    # Verify schema
+    logger.info('Verifying table schema')
+    cursor.execute('PRAGMA table_info(todo)')
+    columns = cursor.fetchall()
+    logger.info(f'Created table schema: {columns}')
+    
+    # Close connection
     conn.close()
     
     logger.info('Database table created successfully')
@@ -60,24 +104,19 @@ try:
         'SQLALCHEMY_TRACK_MODIFICATIONS': False
     })
     
-    # Verify schema with SQLAlchemy
+    # Verify with SQLAlchemy
     with app.app_context():
-        inspector = db.inspect(db.engine)
-        columns = {col['name'] for col in inspector.get_columns('todo')}
-        required = {'id', 'title', 'description', 'completed', 'due_date', 'created_at'}
-        
-        logger.info(f'Found columns: {columns}')
-        if not required.issubset(columns):
-            missing = required - columns
-            logger.error(f'Missing columns: {missing}')
-            raise Exception(f'Missing required columns: {missing}')
+        # Verify schema again after SQLAlchemy initialization
+        if not verify_table_schema(db_path):
+            raise Exception('Table schema verification failed after SQLAlchemy initialization')
         
         # Test the table with a simple query
         try:
-            db.session.execute('SELECT * FROM todo LIMIT 1')
-            logger.info('Table query test successful')
+            result = db.session.execute('SELECT * FROM todo LIMIT 1')
+            logger.info('SQLAlchemy query test successful')
+            logger.info(f'Query result: {result.keys()}')  # Log column names
         except Exception as e:
-            logger.error(f'Table query test failed: {str(e)}')
+            logger.error(f'SQLAlchemy query test failed: {str(e)}')
             raise
         
         logger.info('Database initialization complete')
@@ -87,4 +126,4 @@ except Exception as e:
     sys.exit(1)
 
 logger.info('Starting gunicorn...')
-" && gunicorn --bind=0.0.0.0:5000 --log-level=debug 'app:create_app()' 
+" && gunicorn --bind=0.0.0.0:5000 --log-level=debug --timeout 120 'app:create_app()' 
