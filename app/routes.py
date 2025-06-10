@@ -126,9 +126,17 @@ def add_response_headers(f):
         return response
     return decorated_function
 
+@bp.route('/protected', methods=['POST'])
+def protected_route():
+    """A route that requires CSRF protection"""
+    # This route is not CSRF exempt, so it will require a valid token
+    csrf = current_app.extensions['csrf']
+    csrf.protect()  # Explicitly enable CSRF protection for this route
+    return jsonify({'message': 'Access granted'})
+
 @ns.route('/')
 class TodoList(Resource):
-    method_decorators = [add_response_headers]
+    method_decorators = [add_response_headers, csrf.exempt]  # Add CSRF exemption to all methods
 
     @ns.doc('list_todos')
     @ns.marshal_list_with(todo_model)
@@ -176,7 +184,7 @@ class TodoList(Resource):
 @ns.route('/<int:id>')
 @ns.param('id', 'The todo identifier')
 class TodoItem(Resource):
-    method_decorators = [add_response_headers]
+    method_decorators = [add_response_headers, csrf.exempt]  # Add CSRF exemption to all methods
 
     @ns.doc('get_todo')
     @ns.marshal_with(todo_model)
@@ -235,14 +243,6 @@ class TodoItem(Resource):
         except Exception as e:
             logger.error(f"Error deleting todo {id}: {str(e)}", exc_info=True)
             raise
-
-# Add a test route for CSRF protection testing
-@bp.route('/protected', methods=['POST'])
-def protected_route():
-    """A route that requires CSRF protection"""
-    csrf = current_app.extensions['csrf']
-    csrf.protect()  # Explicitly enable CSRF protection for this route
-    return jsonify({'message': 'CSRF protection is working'}), 200
 
 # Add a before_request handler for OPTIONS requests
 @bp.before_request

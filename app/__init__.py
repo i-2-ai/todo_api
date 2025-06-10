@@ -3,7 +3,7 @@ import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_cors import CORS
 from flask_talisman import Talisman
 
@@ -17,6 +17,7 @@ csrf = CSRFProtect()
 talisman = Talisman()
 
 def create_app(test_config=None):
+    """Create and configure the Flask application"""
     app = Flask(__name__)
 
     # Load default configuration
@@ -26,7 +27,7 @@ def create_app(test_config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         WTF_CSRF_ENABLED=True,  # Enable CSRF protection globally
         WTF_CSRF_SSL_STRICT=True,  # Enforce SSL for CSRF tokens
-        WTF_CSRF_CHECK_DEFAULT=False,  # Disable CSRF check by default
+        WTF_CSRF_CHECK_DEFAULT=True,  # Enable CSRF check by default
         WTF_CSRF_METHODS=['POST', 'PUT', 'PATCH', 'DELETE'],  # Methods to protect
         SESSION_COOKIE_SECURE=True,
         SESSION_COOKIE_HTTPONLY=True,
@@ -38,7 +39,7 @@ def create_app(test_config=None):
         CORS_SUPPORTS_CREDENTIALS=True
     )
 
-    # Override config with test config if passed
+    # Override configuration with test config if provided
     if test_config is not None:
         app.config.update(test_config)
 
@@ -77,6 +78,23 @@ def create_app(test_config=None):
             'payment': "'none'"
         }
     )
+
+    # Register error handlers
+    @app.errorhandler(404)
+    def not_found_error(e):
+        return {'error': str(e)}, 404
+
+    @app.errorhandler(400)
+    def bad_request_error(e):
+        return {'error': str(e)}, 400
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        return {'error': str(e)}, 500
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        return {'error': str(e)}, 400
 
     # Register blueprints
     from .routes import bp as api_bp
