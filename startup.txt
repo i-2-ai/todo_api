@@ -4,10 +4,11 @@ import sys
 import logging
 import sqlite3
 from app import create_app, db
+from app.models import Todo
 
-# Configure logging to write to both console and file
+# Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -16,12 +17,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
-def verify_table_schema(db_path):
+def verify_database(db_path):
     try:
+        logger.info(f'Verifying database at {db_path}')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Get table info
+        cursor.execute('SELECT sql FROM sqlite_master WHERE type=\'table\' AND name=\'todo\'')
+        table_sql = cursor.fetchone()
+        if table_sql:
+            logger.info(f'Current table SQL: {table_sql[0]}')
+        else:
+            logger.warning('Todo table does not exist')
+            
         cursor.execute('PRAGMA table_info(todo)')
         columns = cursor.fetchall()
         logger.info(f'Current table schema: {columns}')
@@ -58,65 +67,47 @@ try:
     # Set permissions
     os.chmod(db_dir, 0o777)
     
-    # Create database connection
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Drop existing table if it exists
-    logger.info('Dropping existing table if it exists')
-    cursor.execute('DROP TABLE IF EXISTS todo')
-    conn.commit()
-    
-    # Create table with explicit schema
-    logger.info('Creating table with new schema')
-    create_table_sql = '''
-    CREATE TABLE todo (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title VARCHAR(100) NOT NULL,
-        description VARCHAR(500),
-        completed INTEGER DEFAULT 0 CHECK (completed IN (0, 1)),
-        due_date DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-    '''
-    cursor.execute(create_table_sql)
-    conn.commit()
-    
-    # Verify table was created
-    cursor.execute('SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'todo\'')
-    if not cursor.fetchone():
-        raise Exception('Table was not created successfully')
-    
-    # Verify schema
-    logger.info('Verifying table schema')
-    cursor.execute('PRAGMA table_info(todo)')
-    columns = cursor.fetchall()
-    logger.info(f'Created table schema: {columns}')
-    
-    # Close connection
-    conn.close()
-    
-    logger.info('Database table created successfully')
-    
-    # Initialize app
+    # Initialize app with database URI
     app = create_app({
         'SQLALCHEMY_DATABASE_URI': f'sqlite:///{db_path}',
         'SQLALCHEMY_TRACK_MODIFICATIONS': False
     })
     
-    # Verify with SQLAlchemy
+    # Drop and recreate tables
     with app.app_context():
-        # Verify schema again after SQLAlchemy initialization
-        if not verify_table_schema(db_path):
-            raise Exception('Table schema verification failed after SQLAlchemy initialization')
+        logger.info('Dropping all tables')
+        db.drop_all()
         
-        # Test the table with a simple query
+        logger.info('Creating all tables')
+        db.create_all()
+        
+        # Verify database schema
+        if not verify_database(db_path):
+            raise Exception('Database schema verification failed')
+            
+        # Test database connection and schema
         try:
-            result = db.session.execute('SELECT * FROM todo LIMIT 1')
-            logger.info('SQLAlchemy query test successful')
-            logger.info(f'Query result: {result.keys()}')  # Log column names
+            logger.info('Testing database connection')
+            test_todo = Todo(
+                title='Test Todo',
+                description='Testing database connection',
+                completed=0
+            )
+            db.session.add(test_todo)
+            db.session.commit()
+            logger.info('Successfully added test todo')
+            
+            # Query the test todo
+            result = db.session.query(Todo).first()
+            logger.info(f'Successfully queried test todo: {result}')
+            
+            # Clean up test data
+            db.session.delete(test_todo)
+            db.session.commit()
+            logger.info('Successfully cleaned up test data')
+            
         except Exception as e:
-            logger.error(f'SQLAlchemy query test failed: {str(e)}')
+            logger.error(f'Database test failed: {str(e)}')
             raise
         
         logger.info('Database initialization complete')
@@ -126,4 +117,4 @@ except Exception as e:
     sys.exit(1)
 
 logger.info('Starting gunicorn...')
-" && gunicorn --bind=0.0.0.0:5000 --log-level=debug --timeout 120 'app:create_app()' 
+" && gunicorn --bind=0.0.0.0:5000 --log-level=debug --timeout 600 'app:create_app()' 
