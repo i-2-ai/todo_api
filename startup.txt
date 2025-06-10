@@ -43,9 +43,9 @@ try:
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title VARCHAR(100) NOT NULL,
         description VARCHAR(500),
-        completed BOOLEAN DEFAULT 0,
-        due_date TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        completed INTEGER DEFAULT 0 CHECK (completed IN (0, 1)),
+        due_date DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
@@ -71,6 +71,14 @@ try:
             missing = required - columns
             logger.error(f'Missing columns: {missing}')
             raise Exception(f'Missing required columns: {missing}')
+        
+        # Test the table with a simple query
+        try:
+            db.session.execute('SELECT * FROM todo LIMIT 1')
+            logger.info('Table query test successful')
+        except Exception as e:
+            logger.error(f'Table query test failed: {str(e)}')
+            raise
         
         logger.info('Database initialization complete')
 
