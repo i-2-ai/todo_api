@@ -5,10 +5,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create data directory with proper permissions
+RUN mkdir -p /home/site/wwwroot/data && \
+    chmod 777 /home/site/wwwroot/data
+
 COPY . .
 
 ENV FLASK_APP=app
 ENV FLASK_ENV=production
+ENV HOME=/home/site/wwwroot
 
 EXPOSE 5000
 
