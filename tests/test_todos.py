@@ -2,7 +2,7 @@ import pytest
 from app import create_app, db
 from app.models import Todo
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 @pytest.fixture
 def app():
@@ -35,22 +35,25 @@ def csrf_token(client):
     return csrf_token
 
 def test_create_todo(client, init_database, csrf_token):
-    test_data = {
+    """Test creating a new todo"""
+    todo_data = {
         'title': 'Test Todo',
         'description': 'Test Description',
         'completed': False,
-        'due_date': (datetime.utcnow() + timedelta(days=1)).isoformat()
+        'due_date': datetime.utcnow().isoformat()
     }
-    response = client.post('/todos/', 
-                         json=test_data,
-                         headers={'X-CSRF-Token': csrf_token})
+    response = client.post('/todos/',
+        json=todo_data,
+        headers={'X-CSRF-Token': csrf_token}
+    )
     assert response.status_code == 201
     data = json.loads(response.data)
-    assert data['title'] == test_data['title']
-    assert data['description'] == test_data['description']
-    assert data['completed'] == test_data['completed']
+    assert data['title'] == todo_data['title']
+    assert data['description'] == todo_data['description']
+    assert data['completed'] == todo_data['completed']
 
 def test_get_todos(client, init_database):
+    """Test getting all todos"""
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -69,6 +72,7 @@ def test_get_todos(client, init_database):
     assert data[0]['completed'] == todo.completed
 
 def test_get_todo(client, init_database):
+    """Test getting a specific todo"""
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -86,6 +90,7 @@ def test_get_todo(client, init_database):
     assert data['completed'] == todo.completed
 
 def test_update_todo(client, init_database, csrf_token):
+    """Test updating a todo"""
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -95,14 +100,16 @@ def test_update_todo(client, init_database, csrf_token):
     init_database.session.add(todo)
     init_database.session.commit()
 
+    # Update the todo
     update_data = {
         'title': 'Updated Todo',
         'description': 'Updated Description',
         'completed': True
     }
-    response = client.put(f'/todos/{todo.id}', 
-                         json=update_data,
-                         headers={'X-CSRF-Token': csrf_token})
+    response = client.put(f'/todos/{todo.id}',
+        json=update_data,
+        headers={'X-CSRF-Token': csrf_token}
+    )
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data['title'] == update_data['title']
@@ -110,6 +117,7 @@ def test_update_todo(client, init_database, csrf_token):
     assert data['completed'] == update_data['completed']
 
 def test_delete_todo(client, init_database, csrf_token):
+    """Test deleting a todo"""
     # Create a test todo
     todo = Todo.from_dict({
         'title': 'Test Todo',
@@ -120,7 +128,8 @@ def test_delete_todo(client, init_database, csrf_token):
     init_database.session.commit()
 
     response = client.delete(f'/todos/{todo.id}',
-                           headers={'X-CSRF-Token': csrf_token})
+        headers={'X-CSRF-Token': csrf_token}
+    )
     assert response.status_code == 204
 
     # Verify the todo was deleted

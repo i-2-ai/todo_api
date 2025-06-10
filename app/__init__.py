@@ -2,6 +2,9 @@ import os
 import logging
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
+from flask_cors import CORS
 from flask_talisman import Talisman
 
 # Configure logging
@@ -9,84 +12,89 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
+migrate = Migrate()
+csrf = CSRFProtect()
 talisman = Talisman()
 
 def create_app(test_config=None):
-    # Create Flask app
     app = Flask(__name__)
-    
-    if test_config is None:
-        # Set the database path for Azure environment
-        # Use a writable location in Azure App Service
-        db_path = os.path.join(os.environ.get('HOME', '/home/site/wwwroot'), 'data', 'todos.db')
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        
-        app.config.update(
-            SQLALCHEMY_DATABASE_URI=f'sqlite:///{db_path}',
-            SQLALCHEMY_TRACK_MODIFICATIONS=False,
-            # Add security-related configurations
-            SECRET_KEY=os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key'),  # Get from environment or use default
-            SESSION_COOKIE_SECURE=True,
-            SESSION_COOKIE_HTTPONLY=True,
-            SESSION_COOKIE_SAMESITE='Lax',
-            PERMANENT_SESSION_LIFETIME=1800,  # 30 minutes
-            WTF_CSRF_ENABLED=True,
-            WTF_CSRF_TIME_LIMIT=3600  # 1 hour
-        )
-        logger.info(f"Using database path: {db_path}")
-        
-        # Initialize Talisman for security headers in production
-        talisman.init_app(app,
-            force_https=True,
-            strict_transport_security=True,
-            session_cookie_secure=True,
-            content_security_policy={
-                'default-src': "'self'",
-                'img-src': "'self' data:",
-                'script-src': "'self'",
-                'style-src': "'self' 'unsafe-inline'",
-                'frame-ancestors': "'none'"
-            }
-        )
-    else:
-        app.config.update(test_config)
-        # Set a secret key for session management in tests
-        app.config['SECRET_KEY'] = test_config.get('SECRET_KEY', 'test-secret-key')
-        # Initialize Talisman with reduced security for testing
-        talisman.init_app(app,
-            force_https=False,
-            session_cookie_secure=False,
-            content_security_policy=None
-        )
 
-    try:
-        # Initialize the database
-        db.init_app(app)
-        
-        # Import models here to ensure they are registered with SQLAlchemy
-        from . import models
-        
-        with app.app_context():
-            # Verify the table doesn't exist before creating
-            inspector = db.inspect(db.engine)
-            if not inspector.has_table("todo"):
-                logger.info("Creating database tables...")
-                db.create_all()
-                logger.info("Database tables created successfully")
-            else:
-                logger.info("Database tables already exist")
-    except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}", exc_info=True)
-        raise
+    # Load default configuration
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///todos.db'),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        WTF_CSRF_ENABLED=True,  # Enable CSRF protection globally
+        WTF_CSRF_SSL_STRICT=True,  # Enforce SSL for CSRF tokens
+        WTF_CSRF_CHECK_DEFAULT=False,  # Disable CSRF check by default
+        WTF_CSRF_METHODS=['POST', 'PUT', 'PATCH', 'DELETE'],  # Methods to protect
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
+        # CORS settings
+        CORS_METHODS=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        CORS_ALLOW_HEADERS=['Content-Type', 'X-CSRF-Token', 'Authorization'],
+        CORS_EXPOSE_HEADERS=['X-CSRF-Token'],
+        CORS_SUPPORTS_CREDENTIALS=True
+    )
+
+    # Override config with test config if passed
+    if test_config is not None:
+        app.config.update(test_config)
+
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    csrf.init_app(app)
+    
+    # Initialize Talisman with security headers
+    csp = {
+        'default-src': "'self'",
+        'img-src': "'self' data:",
+        'script-src': "'self' 'unsafe-inline' 'unsafe-eval'",
+        'style-src': "'self' 'unsafe-inline'",
+    }
+    
+    talisman.init_app(app,
+        force_https=not app.config.get('TESTING', False),
+        strict_transport_security=True,
+        session_cookie_secure=True,
+        content_security_policy=csp,
+        content_security_policy_nonce_in=['script-src', 'style-src'],
+        feature_policy={
+            'geolocation': "'none'",
+            'midi': "'none'",
+            'notifications': "'none'",
+            'push': "'none'",
+            'sync-xhr': "'none'",
+            'microphone': "'none'",
+            'camera': "'none'",
+            'magnetometer': "'none'",
+            'gyroscope': "'none'",
+            'speaker': "'none'",
+            'vibrate': "'none'",
+            'fullscreen': "'none'",
+            'payment': "'none'"
+        }
+    )
 
     # Register blueprints
-    try:
-        from .routes import bp, csrf
-        csrf.init_app(app)  # Initialize CSRF protection
-        app.register_blueprint(bp)
-        logger.info("Routes registered successfully")
-    except Exception as e:
-        logger.error(f"Error registering routes: {str(e)}", exc_info=True)
-        raise
+    from .routes import bp as api_bp
+    app.register_blueprint(api_bp)  # Remove the url_prefix to allow Swagger UI access
+
+    # Enable CORS after registering blueprints
+    CORS(app, resources={
+        r"/*": {
+            "origins": "*",
+            "methods": app.config['CORS_METHODS'],
+            "allow_headers": app.config['CORS_ALLOW_HEADERS'],
+            "expose_headers": app.config['CORS_EXPOSE_HEADERS'],
+            "supports_credentials": app.config['CORS_SUPPORTS_CREDENTIALS']
+        }
+    })
+
+    # Create database tables
+    with app.app_context():
+        db.create_all()
 
     return app 
